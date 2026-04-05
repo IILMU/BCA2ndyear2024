@@ -1,29 +1,29 @@
 # Fraud Detection System (OCR + Machine Learning)
 
-## 📌 Project Overview
+## Project Overview
 This project is an OCR-based Fraud Detection System that extracts transaction details from screenshots/images and predicts whether the transaction is fraudulent or genuine using machine learning.
 
-## 🚀 Features
+## Features
 - OCR text extraction using Tesseract
 - Fraud detection using ML model
 - Flask-based web application
 - User-friendly interface
 
-## 🛠️ Technologies Used
+## Technologies Used
 - Python
 - Flask
 - Tesseract OCR
 - Scikit-learn
 - HTML, CSS, JavaScript
 
-## 📂 Project Structure
+## Project Structure
 - app.py → Main backend file
 - transactions.db → Database
 - requirements.txt → Dependencies
 - report.pdf → Project report
 - temp.png → Sample input
 
-## ▶️ How to Run
+## How to Run
 1. Install requirements:
    ```
    pip install -r requirements.txt
@@ -37,8 +37,8 @@ This project is an OCR-based Fraud Detection System that extracts transaction de
    http://127.0.0.1:5000
    ```
 
-## 📊 Output
+## Output
 The system analyzes the transaction and predicts whether it is fraud or not.
 
-## 👤 Author
+##  Author
 Rohan
