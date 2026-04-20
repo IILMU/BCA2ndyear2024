@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vision AI - Voice Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan: #00ffe7;
+    --cyan-dim: #00a89a;
+    --wiki: #4fc3f7;
+    --wiki-dim: #2196f3;
+    --glow: 0 0 12px var(--cyan), 0 0 40px rgba(0,255,231,0.35);
+    --glow-xl: 0 0 20px var(--cyan), 0 0 80px rgba(0,255,231,0.6), 0 0 160px rgba(0,255,231,0.2);
+    --glow-wiki: 0 0 12px var(--wiki), 0 0 40px rgba(79,195,247,0.4);
+  }
+
+  body {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 60%, #001e1e 0%, #000d0d 60%, #000 100%);
+    color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    padding: 28px 16px 60px;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,231,0.012) 2px, rgba(0,255,231,0.012) 4px);
+    pointer-events: none; z-index: 10;
+  }
+
+  header { text-align: center; margin-bottom: 28px; }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(24px, 5vw, 46px);
+    font-weight: 900; letter-spacing: 0.18em;
+    text-shadow: var(--glow);
+    animation: flicker 6s infinite;
+  }
+
+  .subtitle {
+    font-size: 11px; letter-spacing: 0.35em;
+    color: var(--cyan-dim); margin-top: 8px; text-transform: uppercase;
+  }
+
+  @keyframes flicker {
+    0%,95%,100%{opacity:1} 96%{opacity:.8} 97%{opacity:1} 98%{opacity:.6} 99%{opacity:1}
+  }
+
+  .mode-badge {
+    display: inline-block; font-size: 9px; letter-spacing: 0.3em;
+    padding: 3px 12px; border: 1px solid rgba(0,255,231,0.3);
+    border-radius: 20px; color: var(--cyan-dim); margin-bottom: 16px;
+    text-transform: uppercase; transition: all 0.3s;
+  }
+  .mode-badge.voice { border-color: var(--cyan); color: var(--cyan); }
+  .mode-badge.text  { border-color: #f0a500; color: #f0a500; }
+
+  /* Orb */
+  .orb-wrap {
+    position: relative; width: 190px; height: 190px;
+    cursor: pointer; user-select: none;
+  }
+  .orb-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid transparent;
+    border-top-color: var(--cyan); border-right-color: rgba(0,255,231,0.3);
+    animation: spin 3s linear infinite; box-shadow: var(--glow);
+  }
+  .orb-ring-2 {
+    position: absolute; inset: 10px; border-radius: 50%;
+    border: 1px solid transparent;
+    border-bottom-color: var(--cyan); border-left-color: rgba(0,255,231,0.2);
+    animation: spin 5s linear infinite reverse;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .orb {
+    position: absolute; inset: 20px; border-radius: 50%;
+    border: 1.5px solid var(--cyan);
+    box-shadow: var(--glow), inset 0 0 30px rgba(0,255,231,0.08);
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow 0.3s ease;
+    background: radial-gradient(circle at 40% 35%, rgba(0,255,231,0.07), transparent 70%);
+  }
+  .orb-wrap.active .orb {
+    box-shadow: var(--glow-xl), inset 0 0 60px rgba(0,255,231,0.15);
+    border-color: #fff;
+  }
+  .orb-wrap.wiki-mode .orb {
+    box-shadow: var(--glow-wiki), inset 0 0 40px rgba(79,195,247,0.1);
+    border-color: var(--wiki);
+  }
+  .inner-dot {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,231,0.9) 0%, rgba(0,255,231,0.3) 60%, transparent 100%);
+    animation: breathe 2s ease-in-out infinite; position: relative;
+  }
+  .inner-dot::after {
+    content: ''; position: absolute; inset: 12px; border-radius: 50%;
+    background: white; opacity: 0.6;
+    animation: breathe 2s ease-in-out infinite 0.3s;
+  }
+  @keyframes breathe {
+    0%,100%{transform:scale(1);opacity:.85} 50%{transform:scale(1.3);opacity:1}
+  }
+  .orb-wrap.active .inner-dot,
+  .orb-wrap.active .inner-dot::after {
+    animation: pulse-active 0.5s ease-in-out infinite;
+  }
+  @keyframes pulse-active { 0%,100%{transform:scale(1)} 50%{transform:scale(1.55)} }
+
+  #status {
+    margin-top: 22px; font-size: 13px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--cyan-dim);
+    min-height: 20px; transition: color 0.3s;
+    text-align: center; max-width: 90vw; padding: 0 10px;
+  }
+  #status.active { color: var(--cyan); text-shadow: var(--glow); }
+  #status.error  { color: #ff4d6d; text-shadow: 0 0 8px #ff4d6d; }
+  #status.warn   { color: #f0a500; }
+  #status.wiki   { color: var(--wiki); text-shadow: var(--glow-wiki); }
+
+  .waveform {
+    display: flex; align-items: center; gap: 3px;
+    margin-top: 14px; height: 28px;
+  }
+  .waveform span {
+    display: block; width: 3px; border-radius: 2px;
+    background: var(--cyan); opacity: 0.35;
+    animation: wave 1.2s ease-in-out infinite;
+  }
+  .waveform span:nth-child(1){height:8px;animation-delay:0s}
+  .waveform span:nth-child(2){height:16px;animation-delay:.1s}
+  .waveform span:nth-child(3){height:22px;animation-delay:.2s}
+  .waveform span:nth-child(4){height:12px;animation-delay:.3s}
+  .waveform span:nth-child(5){height:20px;animation-delay:.4s}
+  .waveform span:nth-child(6){height:28px;animation-delay:.5s}
+  .waveform span:nth-child(7){height:18px;animation-delay:.4s}
+  .waveform span:nth-child(8){height:24px;animation-delay:.3s}
+  .waveform span:nth-child(9){height:14px;animation-delay:.2s}
+  .waveform span:nth-child(10){height:10px;animation-delay:.1s}
+  .waveform span:nth-child(11){height:6px;animation-delay:0s}
+  .waveform.active span { opacity: 1; animation-duration: 0.45s; }
+  @keyframes wave { 0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)} }
+
+  /* Main output box */
+  .output-box {
+    margin-top: 18px; width: min(480px, 92vw);
+    border: 1px solid rgba(0,255,231,0.15); border-radius: 4px;
+    padding: 12px 16px; text-align: left; font-size: 13px;
+    line-height: 1.6; background: rgba(0,255,231,0.03);
+    display: grid; gap: 5px;
+  }
+  .output-box .label {
+    font-size: 9px; letter-spacing: 0.3em;
+    color: var(--cyan-dim); text-transform: uppercase;
+  }
+  .output-box .text {
+    color: var(--cyan); min-height: 16px; word-break: break-word;
+  }
+
+  /* ─── WIKIPEDIA KNOWLEDGE GATE ─── */
+  .wiki-gate {
+    margin-top: 16px; width: min(480px, 92vw);
+    border: 1px solid rgba(79,195,247,0.25);
+    border-radius: 6px;
+    background: rgba(79,195,247,0.04);
+    overflow: hidden;
+    transition: all 0.4s ease;
+    display: none;
+  }
+  .wiki-gate.show { display: block; animation: fadeSlide 0.4s ease; }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .wiki-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(79,195,247,0.08);
+    border-bottom: 1px solid rgba(79,195,247,0.15);
+  }
+
+  .wiki-icon {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, #4fc3f7, #2196f3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(79,195,247,0.5);
+  }
+
+  .wiki-title-wrap { flex: 1; }
+  .wiki-badge {
+    font-size: 8px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--wiki-dim); margin-bottom: 1px;
+  }
+  .wiki-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px; color: var(--wiki);
+    text-shadow: 0 0 8px rgba(79,195,247,0.5);
+    letter-spacing: 0.05em;
+  }
+
+  .wiki-loading {
+    display: none; padding: 14px 16px;
+    color: var(--wiki-dim); font-size: 12px; letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .wiki-loading.show { display: flex; align-items: center; gap: 10px; }
+
+  .wiki-loader {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(79,195,247,0.2);
+    border-top-color: var(--wiki);
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .wiki-body { padding: 14px 16px; display: none; }
+  .wiki-body.show { display: block; }
+
+  .wiki-image-wrap {
+    float: right; margin: 0 0 10px 14px;
+    border: 1px solid rgba(79,195,247,0.25);
+    border-radius: 3px; overflow: hidden;
+    display: none;
+  }
+  .wiki-image-wrap.show { display: block; }
+  .wiki-image-wrap img {
+    width: 100px; height: 100px; object-fit: cover; display: block;
+  }
+  .wiki-image-caption {
+    font-size: 8px; letter-spacing: 0.1em; text-align: center;
+    padding: 3px 5px; color: var(--wiki-dim); background: rgba(0,0,0,0.4);
+    text-transform: uppercase;
+  }
+
+  .wiki-summary {
+    font-size: 12px; line-height: 1.75; color: rgba(79,195,247,0.85);
+    word-break: break-word;
+  }
+  .wiki-summary::after { content: ''; display: block; clear: both; }
+
+  .wiki-meta {
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid rgba(79,195,247,0.1);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 6px;
+  }
+  .wiki-source {
+    font-size: 9px; letter-spacing: 0.15em; color: rgba(79,195,247,0.4);
+    text-transform: uppercase;
+  }
+  .wiki-link {
+    font-size: 9px; letter-spacing: 0.1em; color: var(--wiki);
+    text-decoration: none; text-transform: uppercase;
+    border: 1px solid rgba(79,195,247,0.3); padding: 3px 8px;
+    border-radius: 2px; transition: all 0.2s;
+  }
+  .wiki-link:hover {
+    background: rgba(79,195,247,0.1);
+    border-color: var(--wiki);
+  }
+
+  .wiki-error {
+    padding: 12px 16px; font-size: 12px;
+    color: #ff4d6d; display: none;
+  }
+  .wiki-error.show { display: block; }
+
+  /* Trigger hint chips */
+  .wiki-hints {
+    margin-top: 12px; width: min(480px, 92vw);
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .wiki-chip {
+    font-size: 9px; letter-spacing: 0.08em; cursor: pointer;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid rgba(79,195,247,0.2);
+    color: rgba(79,195,247,0.55);
+    background: rgba(79,195,247,0.04);
+    transition: all 0.2s; text-transform: uppercase;
+    user-select: none;
+  }
+  .wiki-chip:hover {
+    border-color: var(--wiki); color: var(--wiki);
+    background: rgba(79,195,247,0.1);
+  }
+
+  /* Text fallback */
+  .text-input-area { margin-top: 14px; width: min(480px, 92vw); display: none; }
+  .text-input-area.show { display: block; }
+  .text-input-area .tip {
+    font-size: 10px; letter-spacing: 0.15em; color: #f0a500;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .input-row { display: flex; gap: 8px; }
+  .input-row input {
+    flex: 1; background: rgba(0,255,231,0.05);
+    border: 1px solid rgba(0,255,231,0.3); border-radius: 3px;
+    color: var(--cyan); font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; padding: 9px 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-row input:focus { border-color: var(--cyan); }
+  .input-row input::placeholder { color: var(--cyan-dim); opacity: 0.5; }
+  .input-row button {
+    background: rgba(0,255,231,0.1); border: 1px solid var(--cyan);
+    border-radius: 3px; color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; letter-spacing: 0.08em;
+    padding: 9px 16px; cursor: pointer; transition: background 0.2s;
+  }
+  .input-row button:hover { background: rgba(0,255,231,0.22); }
+
+  .fix-box {
+    display: none; margin-top: 12px; width: min(480px, 92vw);
+    border: 1px solid rgba(240,165,0,0.3); border-radius: 4px;
+    padding: 12px 16px; font-size: 11px; line-height: 1.9;
+    color: rgba(240,165,0,0.8); background: rgba(240,165,0,0.04);
+  }
+  .fix-box.show { display: block; }
+  .fix-box strong { color: #f0a500; display: block; margin-bottom: 4px; }
+
+  .hint {
+    margin-top: 16px; font-size: 10px;
+    color: rgba(0,255,231,0.22); letter-spacing: 0.12em; text-align: center;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,231,0.2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>VISION AI</h1>
+  <p class="subtitle">Voice Controlled Assistant · Wikipedia Knowledge Gate</p>
+</header>
+
+<div class="mode-badge" id="modeBadge">Initialising…</div>
+
+<div class="orb-wrap" id="orbWrap" onclick="startListening()" title="Click to speak">
+  <div class="orb-ring"></div>
+  <div class="orb-ring-2"></div>
+  <div class="orb"><div class="inner-dot"></div></div>
+</div>
+
+<p id="status">Checking voice support…</p>
+
+<div class="waveform" id="waveform">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span><span></span>
+</div>
+
+<div class="output-box">
+  <span class="label">You said</span>
+  <span class="text" id="inputText">—</span>
+  <span class="label">Response</span>
+  <span class="text" id="outputText">—</span>
+</div>
+
+<!-- ═══ WIKIPEDIA KNOWLEDGE GATE ═══ -->
+<div class="wiki-gate" id="wikiGate">
+  <div class="wiki-header">
+    <div class="wiki-icon">📖</div>
+    <div class="wiki-title-wrap">
+      <div class="wiki-badge">Wikipedia Knowledge Gate</div>
+      <div class="wiki-title" id="wikiQueryTitle">—</div>
+    </div>
+  </div>
+
+  <div class="wiki-loading" id="wikiLoading">
+    <div class="wiki-loader"></div>
+    Fetching from Wikipedia…
+  </div>
+
+  <div class="wiki-body" id="wikiBody">
+    <div class="wiki-image-wrap" id="wikiImageWrap">
+      <img id="wikiImage" src="" alt="" />
+      <div class="wiki-image-caption" id="wikiImageCaption"></div>
+    </div>
+    <div class="wiki-summary" id="wikiSummary"></div>
+    <div class="wiki-meta">
+      <span class="wiki-source">Source · Wikipedia REST API</span>
+      <a class="wiki-link" id="wikiReadMore" href="#" target="_blank" rel="noopener">Read Full Article →</a>
+    </div>
+  </div>
+
+  <div class="wiki-error" id="wikiError">⚠ Could not fetch Wikipedia data. Check internet or try another name.</div>
+</div>
+
+<!-- Quick-fire hint chips -->
+<div class="wiki-hints">
+  <span class="wiki-chip" onclick="tryWikiChip('Mahatma Gandhi')">Gandhi</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Adolf Hitler')">Hitler</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Black hole')">Black Hole</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Albert Einstein')">Einstein</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Marie Curie')">Marie Curie</span>
+  <span class="wiki-chip" onclick="tryWikiChip('World War II')">WW2</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Artificial intelligence')">AI</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Elon Musk')">Elon Musk</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Solar System')">Solar System</span>
+  <span class="wiki-chip" onclick="tryWikiChip('Taj Mahal')">Taj Mahal</span>
+</div>
+
+<div class="text-input-area" id="textInputArea">
+  <p class="tip">⚠ Voice unavailable — type your message below</p>
+  <div class="input-row">
+    <input type="text" id="textInput" placeholder="Ask me anything…" autocomplete="off" />
+    <button onclick="submitText()">Send</button>
+  </div>
+</div>
+
+<div class="fix-box" id="fixBox">
+  <strong>🔧 Why "Network Error" happens — and how to fix it</strong>
+  Chrome's Speech API sends audio to Google's servers. It fails when:<br>
+  <b>1.</b> File opened as <code>file://</code> → <b>Use VS Code → right-click → "Open with Live Server"</b><br>
+  <b>2.</b> Antivirus / firewall blocking WebSocket → temporarily disable it<br>
+  <b>3.</b> VPN active → disconnect VPN and retry<br>
+  <b>4.</b> Google Speech unreachable in your region → use typed input above ↑
+</div>
+
+<p class="hint">Say "tell me about Gandhi" · "explain black hole" · "who is Einstein" · or click a chip above</p>
+
+<script>
+'use strict';
+
+const memory = {};
+let currentRecognition = null;
+let isSpeaking         = false;
+let networkErrorCount  = 0;
+let voiceAvailable     = true;
+
+const orbWrap       = document.getElementById('orbWrap');
+const statusEl      = document.getElementById('status');
+const waveformEl    = document.getElementById('waveform');
+const inputTextEl   = document.getElementById('inputText');
+const outputTextEl  = document.getElementById('outputText');
+const modeBadge     = document.getElementById('modeBadge');
+const textInputArea = document.getElementById('textInputArea');
+const textInputEl   = document.getElementById('textInput');
+const fixBox        = document.getElementById('fixBox');
+
+const wikiGate       = document.getElementById('wikiGate');
+const wikiQueryTitle = document.getElementById('wikiQueryTitle');
+const wikiLoading    = document.getElementById('wikiLoading');
+const wikiBody       = document.getElementById('wikiBody');
+const wikiSummary    = document.getElementById('wikiSummary');
+const wikiImageWrap  = document.getElementById('wikiImageWrap');
+const wikiImage      = document.getElementById('wikiImage');
+const wikiImageCap   = document.getElementById('wikiImageCaption');
+const wikiReadMore   = document.getElementById('wikiReadMore');
+const wikiError      = document.getElementById('wikiError');
+
+function setStatus(msg, type='') { statusEl.textContent=msg; statusEl.className=type; }
+function setActive(on) {
+  orbWrap.classList.toggle('active', on);
+  waveformEl.classList.toggle('active', on);
+}
+
+function setVoiceMode(available) {
+  voiceAvailable = available;
+  if (available) {
+    modeBadge.textContent = '● Voice Mode';
+    modeBadge.className   = 'mode-badge voice';
+    textInputArea.classList.remove('show');
+    fixBox.classList.remove('show');
+    setStatus('Click to Speak');
+  } else {
+    modeBadge.textContent = '⌨  Text Fallback Mode';
+    modeBadge.className   = 'mode-badge text';
+    textInputArea.classList.add('show');
+    fixBox.classList.add('show');
+    setStatus('Type your message below ↓', 'warn');
+    setTimeout(() => textInputEl.focus(), 200);
+  }
+}
+
+/* ── Text input ── */
+textInputEl.addEventListener('keydown', e => { if (e.key==='Enter') submitText(); });
+function submitText() {
+  const v = textInputEl.value.trim();
+  if (!v) return;
+  textInputEl.value = '';
+  process(v);
+}
+
+/* ── Quick chip click ── */
+function tryWikiChip(topic) {
+  inputTextEl.textContent = 'tell me about ' + topic;
+  speak('Let me look that up for you.');
+  fetchWikipedia(topic);
+}
+
+/* ══════════════════════════════════════════
+   WIKIPEDIA KNOWLEDGE GATE
+══════════════════════════════════════════ */
+
+/**
+ * Patterns that trigger a Wikipedia lookup.
+ * Returns the search topic string or null.
+ */
+function detectWikiIntent(text) {
+  const patterns = [
+    // "tell me about X" / "tell me X"
+    /(?:tell\s+me\s+about|explain|describe|about|info\s+(?:on|about)?)\s+(.+)/i,
+    // "who is/was X"
+    /who\s+(?:is|was|are|were)\s+(.+)/i,
+    // "what is/was X"
+    /what\s+(?:is|was|are|were)\s+(?:a\s+|an\s+|the\s+)?(.+)/i,
+    // "history of X"
+    /history\s+of\s+(.+)/i,
+    // "biography of X"
+    /biography\s+of\s+(.+)/i,
+    // "facts about X"
+    /facts\s+about\s+(.+)/i,
+    // "search wikipedia for X" / "wikipedia X"
+    /(?:search\s+)?wikipedia(?:\s+for)?\s+(.+)/i,
+  ];
+
+  for (const pat of patterns) {
+    const m = text.match(pat);
+    if (m && m[1]) {
+      // clean trailing filler
+      const topic = m[1].trim()
+        .replace(/\?+$/,'')
+        .replace(/\bplease\b/gi,'')
+        .trim();
+      if (topic.length > 1) return topic;
+    }
+  }
+  return null;
+}
+
+function showWikiLoading(topic) {
+  wikiGate.classList.add('show');
+  orbWrap.classList.add('wiki-mode');
+  wikiQueryTitle.textContent = topic.toUpperCase();
+  wikiLoading.classList.add('show');
+  wikiBody.classList.remove('show');
+  wikiError.classList.remove('show');
+  setStatus('Fetching Wikipedia…', 'wiki');
+}
+
+function hideWikiLoading() {
+  wikiLoading.classList.remove('show');
+}
+
+function showWikiResult(data) {
+  hideWikiLoading();
+  orbWrap.classList.remove('wiki-mode');
+
+  if (!data || !data.extract) {
+    wikiError.classList.add('show');
+    setStatus(voiceAvailable ? 'Click to Speak' : 'Type your message below ↓',
+              voiceAvailable ? '' : 'warn');
+    return;
+  }
+
+  // Truncate to ~3 sentences for the display card
+  const sentences = data.extract.split(/(?<=[.!?])\s+/);
+  const shortSummary = sentences.slice(0, 4).join(' ');
+  wikiSummary.textContent = shortSummary;
+
+  // Image
+  if (data.thumbnail && data.thumbnail.source) {
+    wikiImage.src = data.thumbnail.source;
+    wikiImage.alt = data.title;
+    wikiImageCap.textContent = data.title;
+    wikiImageWrap.classList.add('show');
+  } else {
+    wikiImageWrap.classList.remove('show');
+  }
+
+  // Read more link
+  const pageUrl = data.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(data.title)}`;
+  wikiReadMore.href = pageUrl;
+
+  wikiBody.classList.add('show');
+  setStatus(voiceAvailable ? 'Click to Speak' : 'Type your message below ↓',
+            voiceAvailable ? '' : 'warn');
+}
+
+async function fetchWikipedia(topic) {
+  showWikiLoading(topic);
+
+  try {
+    // Wikipedia REST API — summary endpoint
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`;
+    const res  = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+    if (!res.ok) {
+      // Try a search to find the right page title
+      const searchUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic.replace(/\s+/g,'_'))}`;
+      const res2 = await fetch(searchUrl, { headers: { 'Accept': 'application/json' } });
+      if (!res2.ok) throw new Error('Not found');
+      const data2 = await res2.json();
+      showWikiResult(data2);
+      // Speak the first sentence
+      const firstSentence = data2.extract?.split(/[.!?]/)[0];
+      if (firstSentence) speak(firstSentence + '.');
+      return;
+    }
+
+    const data = await res.json();
+    showWikiResult(data);
+
+    // Speak first sentence from Wikipedia extract
+    const firstSentence = data.extract?.split(/[.!?]/)[0];
+    if (firstSentence) speak(firstSentence + '.');
+
+  } catch(err) {
+    console.error('[WIKI]', err);
+    hideWikiLoading();
+    wikiError.classList.add('show');
+    orbWrap.classList.remove('wiki-mode');
+    speak("Sorry, I couldn't find Wikipedia data for that topic.");
+    setStatus(voiceAvailable ? 'Click to Speak' : 'Type below', voiceAvailable ? '' : 'warn');
+  }
+}
+
+/* ── TTS ── */
+function getVoices() {
+  return new Promise(resolve => {
+    const v = speechSynthesis.getVoices();
+    if (v.length) { resolve(v); return; }
+    speechSynthesis.onvoiceschanged = () => {
+      resolve(speechSynthesis.getVoices());
+      speechSynthesis.onvoiceschanged = null;
+    };
+    setTimeout(() => resolve(speechSynthesis.getVoices()), 2000);
+  });
+}
+
+function pickVoice(voices) {
+  const hints = ['zira','female','google uk english female','samantha','victoria'];
+  for (const h of hints) {
+    const v = voices.find(v => v.name.toLowerCase().includes(h));
+    if (v) return v;
+  }
+  return voices.find(v=>v.lang==='en-US')
+      || voices.find(v=>v.lang.startsWith('en'))
+      || voices[0] || null;
+}
+
+async function speak(text) {
+  console.log('[TTS]', text);
+  outputTextEl.textContent = text;
+  isSpeaking = true;
+  setStatus('Speaking…', 'active');
+  speechSynthesis.cancel();
+
+  const voices = await getVoices();
+  const voice  = pickVoice(voices);
+  const utter  = new SpeechSynthesisUtterance(text);
+  utter.lang='en-US'; utter.rate=1; utter.pitch=1.15;
+  if (voice) utter.voice = voice;
+
+  const done = () => {
+    isSpeaking = false; setActive(false);
+    setStatus(voiceAvailable ? 'Click to Speak' : 'Type your message below ↓',
+              voiceAvailable ? '' : 'warn');
+  };
+  utter.onend   = done;
+  utter.onerror = e => { if (e.error!=='interrupted') done(); };
+  setTimeout(() => speechSynthesis.speak(utter), 150);
+}
+
+/* ── Intent Router ── */
+function process(raw) {
+  console.log('[AI]', raw);
+  const text = raw.toLowerCase().trim();
+  inputTextEl.textContent = raw || '—';
+
+  // Hide previous wiki result
+  wikiGate.classList.remove('show');
+  wikiBody.classList.remove('show');
+  wikiError.classList.remove('show');
+
+  // ── WIKIPEDIA INTENT CHECK ──
+  const wikiTopic = detectWikiIntent(text);
+  if (wikiTopic) {
+    // Speak a brief bridging line while fetching
+    speak(`Looking up ${wikiTopic} on Wikipedia.`);
+    fetchWikipedia(wikiTopic);
+    return;
+  }
+
+  // ── BUILT-IN INTENTS ──
+  let r = '';
+  if (!text)                         r = "I didn't catch that. Try again.";
+  else if (/^(hi|hello|hey)/.test(text)) r = 'Hello! How can I help you?';
+  else if (text.includes('your name'))   r = 'I am Vision AI, your intelligent assistant.';
+  else if (text.includes('who made you')||text.includes('who created you'))
+    r = 'I was created by Mahavir Sir.';
+  else if (text.startsWith('my name is')) {
+    const name = raw.replace(/my name is/i,'').trim();
+    if (name) { memory.name=name; r='Nice to meet you, '+name+'!'; }
+    else r="I didn't catch your name.";
+  }
+  else if (text.includes('what is my name')||text.includes("what's my name"))
+    r = memory.name ? 'Your name is '+memory.name+'.' : "I don't know your name yet!";
+  else if (text.includes('time'))
+    r = 'The time is '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  else if (text.includes('date')||text.includes('today'))
+    r = 'Today is '+new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  else if (text.includes('joke')) {
+    const jokes=[
+      'Why do programmers hate nature? Too many bugs.',
+      "I told my computer I needed a break. Now it won't stop sending Kit Kat ads.",
+      "Why do Java developers wear glasses? Because they don't C sharp.",
+      'A SQL query walks into a bar and asks two tables: can I join you?'
+    ];
+    r = jokes[Math.floor(Math.random()*jokes.length)];
+  }
+  else if (text.includes('weather')) {
+    window.open('https://www.google.com/search?q=weather','_blank');
+    r='Opening weather for you.';
+  }
+  else if (text.includes('play')||text.includes('song')||text.includes('music')) {
+    const q=text.replace(/play|song|music/g,'').trim();
+    window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(q||'music'),'_blank');
+    r=q?'Playing '+q+' on YouTube.':'Opening YouTube music.';
+  }
+  else if (text.startsWith('open ')) {
+    const site=text.replace('open ','').trim();
+    if (site) { window.open('https://www.'+site+'.com','_blank'); r='Opening '+site+'.'; }
+    else r='Tell me which site to open.';
+  }
+  else if (text.includes('search for')||text.includes('google')) {
+    const q=text.replace(/search for|google/g,'').trim();
+    window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
+    r='Searching Google for '+q;
+  }
+  else if (/\d/.test(text)&&/plus|minus|times|multiply|divide|into|\+|\-|\*|\//.test(text)) {
+    try {
+      const expr=text.replace(/plus/gi,'+').replace(/minus/gi,'-')
+        .replace(/multiply(?:\s+by)?|times|into/gi,'*').replace(/divide(?:\s+by)?/gi,'/')
+        .replace(/[^0-9+\-*/().\s]/g,'');
+      if (/^[\d\s()+\-*/.]+$/.test(expr.trim())) {
+        // eslint-disable-next-line no-new-func
+        const result=new Function('return '+expr)();
+        r='The answer is '+result;
+      } else throw new Error();
+    } catch { r="Sorry, I couldn't calculate that."; }
+  }
+  else r="I'm still learning. You can also say 'tell me about' any person or topic!";
+
+  speak(r);
+}
+
+/* ── STT ── */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function initVoiceCheck() {
+  if (!SpeechRecognition) { setVoiceMode(false); return; }
+  if (location.protocol === 'file:') {
+    setVoiceMode(false);
+    setStatus('Open via Live Server (not file://) · type below for now', 'warn');
+    return;
+  }
+  setVoiceMode(true);
+}
+
+async function startListening() {
+  if (!voiceAvailable) { textInputEl.focus(); return; }
+  if (isSpeaking) return;
+  if (currentRecognition) { currentRecognition.abort(); currentRecognition=null; }
+
+  if (navigator.permissions) {
+    try {
+      const p = await navigator.permissions.query({name:'microphone'});
+      if (p.state==='denied') {
+        setStatus('Mic denied — allow mic in browser settings','error'); return;
+      }
+    } catch(e) {}
+  }
+
+  const rec = new SpeechRecognition();
+  currentRecognition = rec;
+  rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1; rec.continuous=false;
+  let got = false;
+
+  rec.onstart  = () => { setStatus('Listening…','active'); setActive(true); };
+  rec.onresult = e => {
+    got=true;
+    const t=e.results[0][0].transcript;
+    console.log('[STT]',t);
+    setActive(false); process(t);
+  };
+  rec.onnomatch = () => {
+    setStatus("Couldn't understand — try again",'error');
+    setActive(false);
+    setTimeout(()=>setStatus('Click to Speak'),2500);
+  };
+  rec.onerror = e => {
+    console.error('[STT error]', e.error);
+    setActive(false);
+    if (e.error==='network') {
+      networkErrorCount++;
+      if (networkErrorCount>=2) setVoiceMode(false);
+      else {
+        setStatus('Network error — see fix guide below','error');
+        fixBox.classList.add('show');
+        setTimeout(()=>{ if(voiceAvailable) setStatus('Click to Speak'); },4000);
+      }
+      return;
+    }
+    const map={
+      'not-allowed'        :'Mic access denied — check browser settings',
+      'no-speech'          :'No speech — click and try again',
+      'service-not-allowed':'Speech blocked — use Chrome/Edge',
+      'audio-capture'      :'No microphone found',
+      'aborted'            :null,
+    };
+    const msg=map[e.error];
+    if (msg!==null) {
+      setStatus(msg??'Error: '+e.error,'error');
+      setTimeout(()=>{ if(voiceAvailable) setStatus('Click to Speak'); },3000);
+    } else setStatus('Click to Speak');
+  };
+  rec.onend = () => {
+    if (!got) {
+      setActive(false);
+      if (statusEl.className!=='error'&&statusEl.className!=='warn')
+        setStatus(voiceAvailable?'Click to Speak':'Type your message below ↓',
+                  voiceAvailable?'':'warn');
+    }
+    currentRecognition=null;
+  };
+
+  try { rec.start(); }
+  catch(e) { setStatus('Could not start mic: '+e.message,'error'); setActive(false); }
+}
+
+initVoiceCheck();
+</script>
+</body>
+</html>
